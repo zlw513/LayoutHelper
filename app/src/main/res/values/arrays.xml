@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="array_nodeinfo_name">
+        <item>id |</item>
+        <item>activity name |</item>
+        <item>class name |</item>
+        <item>package name |</item>
+        <item>text |</item>
+        <item>checkable ?</item>
+        <item>clickable ?</item>
+        <item>focusable ?</item>
+        <item>editable ?</item>
+        <item>scrollable ?</item>
+        <item>checked ?</item>
+        <item>enabled ?</item>
+        <item>focused ?</item>
+        <item>selected ?</item>
+        <item>window id |</item>
+    </string-array>
+
+    <string-array name="listening_packagename">
+        <item>com.ss.android.ugc.aweme</item>
+        <item>com.zhlw.layouthelper</item>
+    </string-array>
+
+</resources>

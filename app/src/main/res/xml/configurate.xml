@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/app_accessibility_description"
+    android:packageNames="com.zhlw.layouthelper"
+    android:accessibilityEventTypes="typeViewClicked|typeViewFocused|typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackAllMask"
+    android:notificationTimeout="100"
+    android:settingsActivity="com.zhlw.layouthelper.MainActivity"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagIncludeNotImportantViews|flagRequestFilterKeyEvents"
+    android:canRequestFilterKeyEvents="true"
+    android:canRetrieveWindowContent="true"
+    android:canPerformGestures="true"/>
+
+
+<!--typeViewClicked|typeViewFocused|typeWindowStateChanged-->

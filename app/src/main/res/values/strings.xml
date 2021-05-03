@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">LayoutAssistant</string>
+    <string name="accessbilityservice_name" translatable="false">LayoutInspectorHelper</string>
+    <string name="app_accessibility_description">LayoutAssistant</string>
+    <string name="auto_update">ActiveView?</string>
+    <string name="no_this_attr">This View has no such property</string>
+</resources>
