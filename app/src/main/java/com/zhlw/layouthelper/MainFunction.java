@@ -5,11 +5,18 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.accessibilityservice.GestureDescription;
 import android.content.Context;
 import android.graphics.Path;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +28,8 @@ import java.util.List;
  */
 public class MainFunction {
     private final String TAG = "zlww";
+    private static final int CHECK_CODE = 100;
+    private final int SWIPE_DURATION = 250;
     private static MainFunction mainFunction;
     private LayoutSuspendView suspendWindow;
     private MyAccessbilityService mAccessbilityService;
@@ -31,6 +40,11 @@ public class MainFunction {
     private CharSequence activityName;
     private int windowWidth, windowHeight;
     public boolean isDyHelperOpen = false;
+    public boolean isDyAutoVideo = false;
+    private boolean isDySeekBarFounded = false;
+    private volatile boolean isFinding = false;
+    private AccessibilityNodeInfo.RangeInfo dySeekBarRangeInfo;
+    private CheckHandler checkHandler;
 
     private MainFunction() {
         nodeInfoList = new ArrayList<>();
@@ -93,7 +107,7 @@ public class MainFunction {
 
     /**
      * 处理点击和聚焦事件信息
-     *
+     * 此方法涉及suspend window的更新
      * @param info 节点信息
      */
     public void functionHandleFocusAndClick(AccessibilityEvent event, AccessibilityNodeInfo info) {
@@ -128,9 +142,107 @@ public class MainFunction {
         }
     }
 
-    public void functionHandleSelect(AccessibilityNodeInfo info) {
-        if (info.getViewIdResourceName().equals("iup")) {
-            Log.d(TAG, "functionHandleSelect: ");
+    private static class CheckHandler extends Handler{
+        public boolean isSwipeOk = false;
+
+        public CheckHandler(Looper looper){
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            super.handleMessage(msg);
+            if (msg.what == CHECK_CODE){
+                isSwipeOk = true;
+            }
+        }
+    }
+
+    /**
+     * 目前用于处理抖音的视频进度条
+     * @param info
+     */
+    public void functionHandleSelected(AccessibilityNodeInfo info){
+        if (info == null) return;
+        String id = info.getViewIdResourceName().substring(info.getViewIdResourceName().indexOf("/"));
+        updateRangeInfo(id, info);
+    }
+
+    private void updateRangeInfo(String id ,AccessibilityNodeInfo info){
+        if (id.equals(DataSource.dySeekBarId) && info.getClassName().toString().contains("SeekBar")){
+            //更新RangeInfo
+            dySeekBarRangeInfo = info.getRangeInfo();
+            Log.d(TAG, "updateRangeInfo curValue is "+dySeekBarRangeInfo.getCurrent()+" max value is  "+dySeekBarRangeInfo.getMax());
+            if (dySeekBarRangeInfo.getMax() - dySeekBarRangeInfo.getCurrent() < 50){//准备切视频的动作
+                //下一个视频
+                if (checkHandler == null) checkHandler = new CheckHandler(Looper.getMainLooper());
+                checkHandler.sendEmptyMessageDelayed(CHECK_CODE, (long) (SWIPE_DURATION * 1.5));
+            } else if (checkHandler != null && checkHandler.isSwipeOk){
+                swipeDownScreen();
+                checkHandler.isSwipeOk = false;
+            }
+        }
+    }
+
+    /**
+     * 处理 window状态或者内容发生改变的情况
+     * 用于处理抖音自动刷视频的功能
+     * @param state
+     */
+    public void functionHandleWindowContentAndStateChange(AccessibilityEvent event,int state){
+        if (!isDyAutoVideo) return;
+        if (!isDySeekBarFounded && !isFinding){
+            AccessibilityNodeInfo info = getInfoByState(state, event);
+            findDySeekBarView(info);
+        } else {
+            if (dySeekBarRangeInfo != null){
+                //更新rangeinfo
+                if (state == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+                List<AccessibilityNodeInfo> detailInfoList = event.getSource().findAccessibilityNodeInfosByViewId(DataSource.dySeekBarFullId);
+                AccessibilityNodeInfo info;
+                if (detailInfoList.size() == 1) {
+                    info = detailInfoList.get(0);
+                } else {
+                   info = null;
+                }
+                if (info == null) return;
+                String id = info.getViewIdResourceName().substring(info.getViewIdResourceName().indexOf("/"));
+                updateRangeInfo(id,info);
+            }
+        }
+    }
+
+    private AccessibilityNodeInfo getInfoByState(int state,AccessibilityEvent event){
+        AccessibilityNodeInfo info;
+        if (state == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED){
+            info = mAccessbilityService.getRootInActiveWindow();
+        } else if (state == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED){
+            info = event.getSource();
+        } else {
+            info = null;
+        }
+        return info;
+    }
+
+    /**
+     * 查找抖音的 seekbar 控件
+     *  注：有些视频没有进度条........
+     * @param info
+     */
+    private synchronized void findDySeekBarView(AccessibilityNodeInfo info){
+        if (info == null) return;
+        List<AccessibilityNodeInfo> detailInfoList = info.findAccessibilityNodeInfosByViewId(DataSource.dySeekBarFullId);
+        if (!detailInfoList.isEmpty()){
+            isFinding = true;
+            for (AccessibilityNodeInfo node : detailInfoList){
+                String id = node.getViewIdResourceName().substring(node.getViewIdResourceName().indexOf("/"));
+                if (id.equals(DataSource.dySeekBarId) && node.getClassName().toString().contains("SeekBar")){
+                    //找到了
+                    isDySeekBarFounded = true;
+                    dySeekBarRangeInfo = node.getRangeInfo();
+                }
+            }
+            isFinding = false;
         }
     }
 
@@ -181,7 +293,7 @@ public class MainFunction {
         float centerX = windowWidth / 2f;
         path.moveTo(centerX, windowHeight * 0.25f);
         path.lineTo(centerX, windowHeight * 0.8f);
-        final GestureDescription.StrokeDescription strokeDescription = new GestureDescription.StrokeDescription(path, 0, 280);
+        final GestureDescription.StrokeDescription strokeDescription = new GestureDescription.StrokeDescription(path, 0, SWIPE_DURATION);
         mAccessbilityService.dispatchGesture(new GestureDescription.Builder().addStroke(strokeDescription).build(), new AccessibilityService.GestureResultCallback() {
             @Override
             public void onCompleted(GestureDescription gestureDescription) {
@@ -209,7 +321,7 @@ public class MainFunction {
         float centerX = windowWidth / 2f;
         path.moveTo(centerX, windowHeight * 0.8f);
         path.lineTo(centerX, windowHeight * 0.25f);
-        final GestureDescription.StrokeDescription strokeDescription = new GestureDescription.StrokeDescription(path, 0, 250);
+        final GestureDescription.StrokeDescription strokeDescription = new GestureDescription.StrokeDescription(path, 0, SWIPE_DURATION);
         mAccessbilityService.dispatchGesture(new GestureDescription.Builder().addStroke(strokeDescription).build(), new AccessibilityService.GestureResultCallback() {
             @Override
             public void onCompleted(GestureDescription gestureDescription) {
@@ -236,7 +348,7 @@ public class MainFunction {
         float centerY = windowHeight / 2f;
         path.moveTo(0, centerY);
         path.lineTo(windowWidth / 2f, centerY);
-        mAccessbilityService.dispatchGestureMove(path, 300);
+        mAccessbilityService.dispatchGestureMove(path, SWIPE_DURATION);
     }
 
     public void swipeUpNormal(AccessibilityNodeInfo info) {
@@ -261,5 +373,43 @@ public class MainFunction {
         windowWidth = metrics.widthPixels;
         windowHeight = metrics.heightPixels;
     }
+
+    public void setDyHelperOpenState(){
+        if (isDyAutoVideo){
+            Toast.makeText(mAccessbilityService.getContext(), "请先关闭抖音自动刷视频功能", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        isDyHelperOpen = !isDyHelperOpen;
+        if (isDyHelperOpen){
+            setNewListeningPackage(DataSource.dyPackage);
+            closeSuspendWindow();
+            Toast.makeText(mAccessbilityService.getContext(), "抖音协助已开启", Toast.LENGTH_SHORT).show();
+        } else {
+            setNewListeningPackage(DataSource.thisPackage);
+            updateCurPkgNameManual(DataSource.thisPackage);
+            Toast.makeText(mAccessbilityService.getContext(), "抖音协助已关闭", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void setDyHelperAutoVideoState(){
+        if (isDyHelperOpen){
+            Toast.makeText(mAccessbilityService.getContext(), "请先关闭抖音协助功能", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        isDyAutoVideo = !isDyAutoVideo;
+        if (isDyAutoVideo){
+            setNewListeningPackage(DataSource.dyPackage);
+            closeSuspendWindow();
+            Toast.makeText(mAccessbilityService.getContext(), "抖音自动刷视频已开启", Toast.LENGTH_SHORT).show();
+        } else {
+            isFinding = false;
+            isDySeekBarFounded = false;
+            dySeekBarRangeInfo = null;
+            setNewListeningPackage(DataSource.thisPackage);
+            updateCurPkgNameManual(DataSource.thisPackage);
+            Toast.makeText(mAccessbilityService.getContext(), "抖音自动刷视频已关闭", Toast.LENGTH_SHORT).show();
+        }
+    }
+
 
 }

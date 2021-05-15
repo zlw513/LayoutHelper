@@ -86,16 +86,16 @@
         app:layout_constraintVertical_bias="0.03">
 
         <TextView
-            android:id="@+id/text_other"
+            android:id="@+id/text_auto_dyvideo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="开发中..."
+            android:text="抖音自动刷视频服务"
             android:textColor="@color/white"
             android:textSize="16sp" />
 
         <ImageButton
-            android:id="@+id/btn_gotoother"
+            android:id="@+id/btn_auto_dyvideo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"

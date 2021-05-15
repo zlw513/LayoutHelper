@@ -14,25 +14,22 @@ public class MainActivity extends AppCompatActivity {
 
     private final String TAG = "zlww";
     private EditText pkgEditText;
-    private ImageButton toSettingsBtn,totiktokBtn;
+    private ImageButton toSettingsBtn, toTikTokBtn ,toDyAutoVideo;
     private PermissionImpl permissionTools;
     private MainFunction mainFunction;
-
-    private final String dyPackage = "com.ss.android.ugc.aweme";
-    private String myPackage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        myPackage = getPackageName();
         permissionTools = PermissionHelper.init(this);
         mainFunction = MainFunction.getInstance();
 
         pkgEditText = findViewById(R.id.et_packagename);
         toSettingsBtn = findViewById(R.id.btn_gotosettings);
-        totiktokBtn = findViewById(R.id.btn_gotoby);
+        toTikTokBtn = findViewById(R.id.btn_gotoby);
+        toDyAutoVideo = findViewById(R.id.btn_auto_dyvideo);
 
         toSettingsBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -45,7 +42,12 @@ public class MainActivity extends AppCompatActivity {
                     } else {
 
                         if (mainFunction.isDyHelperOpen){
-                            Toast.makeText(MainActivity.this, "请先关闭抖音协助服务", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MainActivity.this, "请先关闭抖音协助功能", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        if (mainFunction.isDyAutoVideo){
+                            Toast.makeText(MainActivity.this, "请先关闭抖音自动刷视频功能", Toast.LENGTH_SHORT).show();
                             return;
                         }
 
@@ -63,19 +65,24 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        totiktokBtn.setOnClickListener(new View.OnClickListener() {
+        toTikTokBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!mainFunction.isDyHelperOpen){
-                    mainFunction.isDyHelperOpen = true;
-                    mainFunction.setNewListeningPackage(dyPackage);
-                    mainFunction.closeSuspendWindow();
-                    Toast.makeText(MainActivity.this, "抖音协助已开启", Toast.LENGTH_SHORT).show();
+                if (!MyAccessbilityService.isServiceRunning()) {
+                    permissionTools.requestAccessibilityPermission();
                 } else {
-                    mainFunction.isDyHelperOpen = false;
-                    mainFunction.setNewListeningPackage(myPackage);
-                    mainFunction.updateCurPkgNameManual(myPackage);
-                    Toast.makeText(MainActivity.this, "抖音协助已关闭", Toast.LENGTH_SHORT).show();
+                    mainFunction.setDyHelperOpenState();
+                }
+            }
+        });
+
+        toDyAutoVideo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!MyAccessbilityService.isServiceRunning()) {
+                    permissionTools.requestAccessibilityPermission();
+                } else {
+                    mainFunction.setDyHelperAutoVideoState();
                 }
             }
         });
