@@ -47,7 +47,7 @@ public class MyAccessbilityService extends AccessibilityService {
             });
         }
         if (mainFunction == null){
-            mainFunction = MainFunction.getInstance(mContext);
+            mainFunction = MainFunction.getInstance();
             mainFunction.bindAccessibilityService(this);
         }
         mainFunction.showSuspendWindow(layoutWindow);
@@ -128,4 +128,9 @@ public class MyAccessbilityService extends AccessibilityService {
     public void setCurrentPackage(String mCurrentPackage) {
         this.mCurrentPackage = mCurrentPackage;
     }
+
+    public Context getContext() {
+        return mContext;
+    }
+
 }

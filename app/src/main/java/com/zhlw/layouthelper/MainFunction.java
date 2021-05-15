@@ -7,7 +7,6 @@ import android.content.Context;
 import android.graphics.Path;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -22,7 +21,6 @@ import java.util.List;
  */
 public class MainFunction {
     private final String TAG = "zlww";
-    private final Context mContext;
     private static MainFunction mainFunction;
     private LayoutSuspendView suspendWindow;
     private MyAccessbilityService mAccessbilityService;
@@ -31,21 +29,18 @@ public class MainFunction {
     private List<CharSequence> nodeInfoList;
     private boolean isWindowShowing = false;
     private CharSequence activityName;
-    private int windowWidth,windowHeight;
+    private int windowWidth, windowHeight;
     public boolean isDyHelperOpen = false;
 
-    private MainFunction(Context context) {
-        Log.d("zlww", " MainFunction ");
-        mContext = context;
+    private MainFunction() {
         nodeInfoList = new ArrayList<>();
-        getWindowWidthAndHeight();
     }
 
-    public static MainFunction getInstance(Context context) {
+    public static MainFunction getInstance() {
         if (mainFunction == null) {
             synchronized (MainFunction.class) {
                 if (mainFunction == null) {
-                    mainFunction = new MainFunction(context);
+                    mainFunction = new MainFunction();
                 }
                 return mainFunction;
             }
@@ -55,6 +50,7 @@ public class MainFunction {
 
     public void bindAccessibilityService(MyAccessbilityService accessbilityService) {
         if (mAccessbilityService == null) mAccessbilityService = accessbilityService;
+        initWindowWidthAndHeight();//此时初始化即可
     }
 
     public void unbindAccessibilityService() {
@@ -63,6 +59,7 @@ public class MainFunction {
 
     /**
      * 依赖注入
+     *
      * @param window
      */
     public void showSuspendWindow(LayoutSuspendView window) {
@@ -70,7 +67,7 @@ public class MainFunction {
         isWindowShowing = true;
         int width = window.getContentView().getWidth();
         int height = window.getContentView().getHeight();
-        window.showSuspend(width,height, false);
+        window.showSuspend(width, height, false);
     }
 
     public void showSuspendWindow() {
@@ -80,7 +77,7 @@ public class MainFunction {
         }
     }
 
-    public void closeSuspendWindow(){
+    public void closeSuspendWindow() {
         if (suspendWindow != null && isWindowShowing) {
             suspendWindow.dismissSuspend();
         }
@@ -96,16 +93,17 @@ public class MainFunction {
 
     /**
      * 处理点击和聚焦事件信息
+     *
      * @param info 节点信息
      */
-    public void functionHandleFocusAndClick(AccessibilityEvent event,AccessibilityNodeInfo info) {
-        if(info == null) return;
+    public void functionHandleFocusAndClick(AccessibilityEvent event, AccessibilityNodeInfo info) {
+        if (info == null) return;
         if (info.getViewIdResourceName() == null) return;
         String curId = info.getViewIdResourceName().substring(info.getViewIdResourceName().indexOf("/"));
-        if (suspendWindow != null && isWindowShowing() && suspendWindow.isRvMainShowing()){
+        if (suspendWindow != null && isWindowShowing() && suspendWindow.isRvMainShowing()) {
             if (mId.equals(curId)) {
                 //不更新
-                if (suspendWindow.isAutoUpdateView()){
+                if (suspendWindow.isAutoUpdateView()) {
                     //已开启自动更新，故强制更新属性信息
 
                     mId = curId;
@@ -130,25 +128,25 @@ public class MainFunction {
         }
     }
 
-    public void functionHandleSelect(AccessibilityNodeInfo info){
-        if (info.getViewIdResourceName().equals("iup")){
+    public void functionHandleSelect(AccessibilityNodeInfo info) {
+        if (info.getViewIdResourceName().equals("iup")) {
             Log.d(TAG, "functionHandleSelect: ");
         }
     }
 
-    private void addNodeInfoList(AccessibilityNodeInfo info){
+    private void addNodeInfoList(AccessibilityNodeInfo info) {
         nodeInfoList.add(info.getClassName());
         nodeInfoList.add(info.getPackageName());
         nodeInfoList.add(info.getText());
         nodeInfoList.add(info.isCheckable() ? "true" : "false");
-        nodeInfoList.add(info.isClickable()  ? "true" : "false");
-        nodeInfoList.add(info.isFocusable()  ? "true" : "false");
-        nodeInfoList.add(info.isEditable()  ? "true" : "false");
-        nodeInfoList.add(info.isScrollable()  ? "true" : "false");
-        nodeInfoList.add(info.isChecked()  ? "true" : "false");
-        nodeInfoList.add(info.isEnabled()  ? "true" : "false");
-        nodeInfoList.add(info.isFocused()  ? "true" : "false");
-        nodeInfoList.add(info.isSelected()  ? "true" : "false");
+        nodeInfoList.add(info.isClickable() ? "true" : "false");
+        nodeInfoList.add(info.isFocusable() ? "true" : "false");
+        nodeInfoList.add(info.isEditable() ? "true" : "false");
+        nodeInfoList.add(info.isScrollable() ? "true" : "false");
+        nodeInfoList.add(info.isChecked() ? "true" : "false");
+        nodeInfoList.add(info.isEnabled() ? "true" : "false");
+        nodeInfoList.add(info.isFocused() ? "true" : "false");
+        nodeInfoList.add(info.isSelected() ? "true" : "false");
         nodeInfoList.add(String.valueOf(info.getWindowId()));
     }
 
@@ -163,18 +161,13 @@ public class MainFunction {
         mAccessbilityService.setServiceInfo(serviceInfo);
     }
 
-    private int dp2px(int dpValue) {
-        int px = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dpValue, mContext.getResources().getDisplayMetrics());
-        return px;
-    }
-
-    public void updateActivityName(CharSequence activityName){
-        if (!activityName.toString().contains("LinearLayout")){
+    public void updateActivityName(CharSequence activityName) {
+        if (!activityName.toString().contains("LinearLayout")) {
             this.activityName = activityName;
         }
     }
 
-    public void updateCurPkgNameManual(String pkgName){
+    public void updateCurPkgNameManual(String pkgName) {
         if (mAccessbilityService == null) return;
         mAccessbilityService.setCurrentPackage(pkgName);
     }
@@ -182,12 +175,12 @@ public class MainFunction {
     /**
      * 上滑视频
      */
-    public void swipeUpScreen(){
+    public void swipeUpScreen() {
         if (isSendingEvents) return;
         Path path = new Path();
         float centerX = windowWidth / 2f;
-        path.moveTo(centerX,windowHeight * 0.25f);
-        path.lineTo(centerX,windowHeight * 0.8f);
+        path.moveTo(centerX, windowHeight * 0.25f);
+        path.lineTo(centerX, windowHeight * 0.8f);
         final GestureDescription.StrokeDescription strokeDescription = new GestureDescription.StrokeDescription(path, 0, 280);
         mAccessbilityService.dispatchGesture(new GestureDescription.Builder().addStroke(strokeDescription).build(), new AccessibilityService.GestureResultCallback() {
             @Override
@@ -210,12 +203,12 @@ public class MainFunction {
     /**
      * 下滑视频
      */
-    public void swipeDownScreen(){
-        if(isSendingEvents) return;
+    public void swipeDownScreen() {
+        if (isSendingEvents) return;
         Path path = new Path();
         float centerX = windowWidth / 2f;
-        path.moveTo(centerX,windowHeight * 0.8f);
-        path.lineTo(centerX,windowHeight * 0.25f);
+        path.moveTo(centerX, windowHeight * 0.8f);
+        path.lineTo(centerX, windowHeight * 0.25f);
         final GestureDescription.StrokeDescription strokeDescription = new GestureDescription.StrokeDescription(path, 0, 250);
         mAccessbilityService.dispatchGesture(new GestureDescription.Builder().addStroke(strokeDescription).build(), new AccessibilityService.GestureResultCallback() {
             @Override
@@ -238,30 +231,31 @@ public class MainFunction {
     /**
      * 关抖音
      */
-    public void closeDy(){
+    public void closeDy() {
         Path path = new Path();
         float centerY = windowHeight / 2f;
-        path.moveTo(0,centerY);
-        path.lineTo(windowWidth /2f,centerY);
+        path.moveTo(0, centerY);
+        path.lineTo(windowWidth / 2f, centerY);
         mAccessbilityService.dispatchGestureMove(path, 300);
     }
 
-    public void swipeUpNormal(AccessibilityNodeInfo info){
-        if (info != null){
+    public void swipeUpNormal(AccessibilityNodeInfo info) {
+        if (info != null) {
             Log.d(TAG, "swipeUpNormal: ");
             info.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
         }
     }
 
-    public void swipeDownNormal(AccessibilityNodeInfo info){
-        if (info != null){
+    public void swipeDownNormal(AccessibilityNodeInfo info) {
+        if (info != null) {
             Log.d(TAG, "swipeDownNormal: ");
             info.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD);
         }
     }
 
-    private void getWindowWidthAndHeight(){
-        WindowManager wm = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
+    private void initWindowWidthAndHeight() {
+        final Context context = mAccessbilityService.getContext();
+        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         DisplayMetrics metrics = new DisplayMetrics();
         wm.getDefaultDisplay().getMetrics(metrics);
         windowWidth = metrics.widthPixels;

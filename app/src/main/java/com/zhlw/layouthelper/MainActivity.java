@@ -28,7 +28,7 @@ public class MainActivity extends AppCompatActivity {
 
         myPackage = getPackageName();
         permissionTools = PermissionHelper.init(this);
-        mainFunction = MainFunction.getInstance(this);
+        mainFunction = MainFunction.getInstance();
 
         pkgEditText = findViewById(R.id.et_packagename);
         toSettingsBtn = findViewById(R.id.btn_gotosettings);
