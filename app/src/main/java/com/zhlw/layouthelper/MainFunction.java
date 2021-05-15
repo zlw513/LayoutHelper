@@ -5,7 +5,6 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.accessibilityservice.GestureDescription;
 import android.content.Context;
 import android.graphics.Path;
-import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
@@ -13,11 +12,8 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
-import androidx.annotation.RequiresApi;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.PrimitiveIterator;
 
 /**
  * author zlw 2021-0421
@@ -103,6 +99,8 @@ public class MainFunction {
      * @param info 节点信息
      */
     public void functionHandleFocusAndClick(AccessibilityEvent event,AccessibilityNodeInfo info) {
+        if(info == null) return;
+        if (info.getViewIdResourceName() == null) return;
         String curId = info.getViewIdResourceName().substring(info.getViewIdResourceName().indexOf("/"));
         if (suspendWindow != null && isWindowShowing() && suspendWindow.isRvMainShowing()){
             if (mId.equals(curId)) {
@@ -178,7 +176,7 @@ public class MainFunction {
 
     public void updateCurPkgNameManual(String pkgName){
         if (mAccessbilityService == null) return;
-        mAccessbilityService.setmCurrentPackage(pkgName);
+        mAccessbilityService.setCurrentPackage(pkgName);
     }
 
     /**

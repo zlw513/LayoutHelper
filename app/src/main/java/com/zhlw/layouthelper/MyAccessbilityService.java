@@ -125,7 +125,7 @@ public class MyAccessbilityService extends AccessibilityService {
         return isServiceCreated;
     }
 
-    public void setmCurrentPackage(String mCurrentPackage) {
+    public void setCurrentPackage(String mCurrentPackage) {
         this.mCurrentPackage = mCurrentPackage;
     }
 }
