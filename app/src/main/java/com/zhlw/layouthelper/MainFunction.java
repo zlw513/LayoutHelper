@@ -161,7 +161,7 @@ public class MainFunction {
      */
     public void functionHandleSelected(AccessibilityNodeInfo info){
         if (info == null) return;
-        updateRangeInfo(info.getViewIdResourceName(), info);
+        if (StateDesc.isDyAutoVedioOpen()) updateRangeInfo(info.getViewIdResourceName(), info);
     }
 
     private void updateRangeInfo(String id ,AccessibilityNodeInfo info){
@@ -271,6 +271,26 @@ public class MainFunction {
         if (mAccessbilityService == null) return;
         AccessibilityServiceInfo serviceInfo = mAccessbilityService.getServiceInfo();
         serviceInfo.packageNames = pkgName;
+        mAccessbilityService.setServiceInfo(serviceInfo);
+    }
+
+    /**
+     * 关闭typeWindowContentChanged事件的接收
+     */
+    private void closeContentChanged() {
+        if (mAccessbilityService == null) return;
+        AccessibilityServiceInfo serviceInfo = mAccessbilityService.getServiceInfo();
+        serviceInfo.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+        mAccessbilityService.setServiceInfo(serviceInfo);
+    }
+
+    /**
+     * 打开typeWindowContentChanged事件的接收
+     */
+    private void openContentChanged() {
+        if (mAccessbilityService == null) return;
+        AccessibilityServiceInfo serviceInfo = mAccessbilityService.getServiceInfo();
+        serviceInfo.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
         mAccessbilityService.setServiceInfo(serviceInfo);
     }
 
@@ -402,12 +422,14 @@ public class MainFunction {
             StateDesc.CUR_STATE = StateDesc.STATE_DYAUTOVEDIO;
             setNewListeningPackage(DataSource.dyPackage);
             closeSuspendWindow();
+            openContentChanged();
             Toast.makeText(mAccessbilityService.getContext(), "抖音自动刷视频已开启", Toast.LENGTH_SHORT).show();
         } else {
             StateDesc.CUR_STATE = StateDesc.STATE_DEFAULT;
             isFinding = false;
             isDySeekBarFounded = false;
             dySeekBarRangeInfo = null;
+            closeContentChanged();
             setNewListeningPackage(DataSource.thisPackage);
             updateCurPkgNameManual(DataSource.thisPackage);
             Toast.makeText(mAccessbilityService.getContext(), "抖音自动刷视频已关闭", Toast.LENGTH_SHORT).show();

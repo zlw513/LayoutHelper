@@ -99,6 +99,7 @@ public class MyAccessbilityService extends AccessibilityService {
                 mainFunction.functionHandleFocusAndClick(event, event.getSource());
                 break;
             case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
+                Log.d(TAG, "onAccessibilityEvent: ");
                 mainFunction.functionHandleWindowContentAndStateChange(event, AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
                 break;
             case AccessibilityEvent.TYPE_VIEW_SELECTED:

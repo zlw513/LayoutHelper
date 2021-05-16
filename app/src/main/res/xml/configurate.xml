@@ -3,7 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/app_accessibility_description"
     android:packageNames="com.zhlw.layouthelper,com.ss.android.ugc.aweme"
-    android:accessibilityEventTypes="typeViewClicked|typeViewFocused|typeWindowStateChanged|typeWindowContentChanged|typeViewSelected"
+    android:accessibilityEventTypes="typeViewClicked|typeViewFocused|typeWindowStateChanged|typeViewSelected"
     android:accessibilityFeedbackType="feedbackAllMask"
     android:notificationTimeout="300"
     android:settingsActivity="com.zhlw.layouthelper.MainActivity"
