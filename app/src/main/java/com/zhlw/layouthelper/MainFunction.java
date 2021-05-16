@@ -8,7 +8,6 @@ import android.graphics.Path;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
@@ -39,8 +38,6 @@ public class MainFunction {
     private boolean isWindowShowing = false;
     private CharSequence activityName;
     private int windowWidth, windowHeight;
-    public boolean isDyHelperOpen = false;
-    public boolean isDyAutoVideo = false;
     private boolean isDySeekBarFounded = false;
     private volatile boolean isFinding = false;
     private AccessibilityNodeInfo.RangeInfo dySeekBarRangeInfo;
@@ -64,7 +61,7 @@ public class MainFunction {
 
     public void bindAccessibilityService(MyAccessbilityService accessbilityService) {
         if (mAccessbilityService == null) mAccessbilityService = accessbilityService;
-        initWindowWidthAndHeight();//此时初始化即可
+        initWindowWidthAndHeight();
     }
 
     public void unbindAccessibilityService() {
@@ -123,7 +120,7 @@ public class MainFunction {
                     mId = curId;
                     if (nodeInfoList.size() > 0) nodeInfoList.clear();
                     nodeInfoList.add(mId);
-                    nodeInfoList.add(activityName);//获取activity名字的
+                    nodeInfoList.add(activityName);
                     addNodeInfoList(info);
 
                     suspendWindow.setDataListOrUpdate(getNodeInfoList());
@@ -134,7 +131,7 @@ public class MainFunction {
 
                 mId = curId;
                 nodeInfoList.add(mId);
-                nodeInfoList.add(activityName);//获取activity名字的
+                nodeInfoList.add(activityName);
                 addNodeInfoList(info);
 
                 suspendWindow.setDataListOrUpdate(getNodeInfoList());
@@ -164,19 +161,17 @@ public class MainFunction {
      */
     public void functionHandleSelected(AccessibilityNodeInfo info){
         if (info == null) return;
-        String id = info.getViewIdResourceName().substring(info.getViewIdResourceName().indexOf("/"));
-        updateRangeInfo(id, info);
+        updateRangeInfo(info.getViewIdResourceName(), info);
     }
 
     private void updateRangeInfo(String id ,AccessibilityNodeInfo info){
-        if (id.equals(DataSource.dySeekBarId) && info.getClassName().toString().contains("SeekBar")){
+        if (id.contains(DataSource.dySeekBarId) && info.getClassName().toString().contains("SeekBar")){
             //更新RangeInfo
             dySeekBarRangeInfo = info.getRangeInfo();
             Log.d(TAG, "updateRangeInfo curValue is "+dySeekBarRangeInfo.getCurrent()+" max value is  "+dySeekBarRangeInfo.getMax());
-            if (dySeekBarRangeInfo.getMax() - dySeekBarRangeInfo.getCurrent() < 50){//准备切视频的动作
-                //下一个视频
+            if (dySeekBarRangeInfo.getMax() - dySeekBarRangeInfo.getCurrent() < 50){
                 if (checkHandler == null) checkHandler = new CheckHandler(Looper.getMainLooper());
-                checkHandler.sendEmptyMessageDelayed(CHECK_CODE, (long) (SWIPE_DURATION * 1.5));
+                checkHandler.sendEmptyMessageDelayed(CHECK_CODE, SWIPE_DURATION);
             } else if (checkHandler != null && checkHandler.isSwipeOk){
                 swipeDownScreen();
                 checkHandler.isSwipeOk = false;
@@ -190,14 +185,14 @@ public class MainFunction {
      * @param state
      */
     public void functionHandleWindowContentAndStateChange(AccessibilityEvent event,int state){
-        if (!isDyAutoVideo) return;
+        if (!StateDesc.isDyAutoVedioOpen()) return;
         if (!isDySeekBarFounded && !isFinding){
             AccessibilityNodeInfo info = getInfoByState(state, event);
             findDySeekBarView(info);
         } else {
             if (dySeekBarRangeInfo != null){
-                //更新rangeinfo
                 if (state == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+                if (event.getSource() == null) return;
                 List<AccessibilityNodeInfo> detailInfoList = event.getSource().findAccessibilityNodeInfosByViewId(DataSource.dySeekBarFullId);
                 AccessibilityNodeInfo info;
                 if (detailInfoList.size() == 1) {
@@ -206,8 +201,7 @@ public class MainFunction {
                    info = null;
                 }
                 if (info == null) return;
-                String id = info.getViewIdResourceName().substring(info.getViewIdResourceName().indexOf("/"));
-                updateRangeInfo(id,info);
+                updateRangeInfo(info.getViewIdResourceName(),info);
             }
         }
     }
@@ -270,6 +264,13 @@ public class MainFunction {
         if (mAccessbilityService == null) return;
         AccessibilityServiceInfo serviceInfo = mAccessbilityService.getServiceInfo();
         serviceInfo.packageNames = new String[]{pkgName};
+        mAccessbilityService.setServiceInfo(serviceInfo);
+    }
+
+    public void setNewListeningPackage(String[] pkgName) {
+        if (mAccessbilityService == null) return;
+        AccessibilityServiceInfo serviceInfo = mAccessbilityService.getServiceInfo();
+        serviceInfo.packageNames = pkgName;
         mAccessbilityService.setServiceInfo(serviceInfo);
     }
 
@@ -375,16 +376,17 @@ public class MainFunction {
     }
 
     public void setDyHelperOpenState(){
-        if (isDyAutoVideo){
+        if (StateDesc.isDyAutoVedioOpen()){
             Toast.makeText(mAccessbilityService.getContext(), "请先关闭抖音自动刷视频功能", Toast.LENGTH_SHORT).show();
             return;
         }
-        isDyHelperOpen = !isDyHelperOpen;
-        if (isDyHelperOpen){
+        if (!StateDesc.isDyHelperOpen()){
+            StateDesc.CUR_STATE = StateDesc.STATE_DYHELPEROPEN;
             setNewListeningPackage(DataSource.dyPackage);
             closeSuspendWindow();
             Toast.makeText(mAccessbilityService.getContext(), "抖音协助已开启", Toast.LENGTH_SHORT).show();
         } else {
+            StateDesc.CUR_STATE = StateDesc.STATE_DEFAULT;
             setNewListeningPackage(DataSource.thisPackage);
             updateCurPkgNameManual(DataSource.thisPackage);
             Toast.makeText(mAccessbilityService.getContext(), "抖音协助已关闭", Toast.LENGTH_SHORT).show();
@@ -392,22 +394,33 @@ public class MainFunction {
     }
 
     public void setDyHelperAutoVideoState(){
-        if (isDyHelperOpen){
+        if (StateDesc.isDyHelperOpen()){
             Toast.makeText(mAccessbilityService.getContext(), "请先关闭抖音协助功能", Toast.LENGTH_SHORT).show();
             return;
         }
-        isDyAutoVideo = !isDyAutoVideo;
-        if (isDyAutoVideo){
+        if (!StateDesc.isDyAutoVedioOpen()){
+            StateDesc.CUR_STATE = StateDesc.STATE_DYAUTOVEDIO;
             setNewListeningPackage(DataSource.dyPackage);
             closeSuspendWindow();
             Toast.makeText(mAccessbilityService.getContext(), "抖音自动刷视频已开启", Toast.LENGTH_SHORT).show();
         } else {
+            StateDesc.CUR_STATE = StateDesc.STATE_DEFAULT;
             isFinding = false;
             isDySeekBarFounded = false;
             dySeekBarRangeInfo = null;
             setNewListeningPackage(DataSource.thisPackage);
             updateCurPkgNameManual(DataSource.thisPackage);
             Toast.makeText(mAccessbilityService.getContext(), "抖音自动刷视频已关闭", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void setScreenHelperOpen(){
+        if (!StateDesc.isScreenHelperOpen()){
+            StateDesc.CUR_STATE = StateDesc.STATE_SCREENHELP;
+            Toast.makeText(mAccessbilityService.getContext(), "屏幕控件助手已开启，其他已自动关闭", Toast.LENGTH_SHORT).show();
+        } else {
+            StateDesc.CUR_STATE = StateDesc.STATE_DEFAULT;
+            Toast.makeText(mAccessbilityService.getContext(), "屏幕控件助手已关闭", Toast.LENGTH_SHORT).show();
         }
     }
 

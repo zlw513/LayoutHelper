@@ -41,12 +41,12 @@ public class MainActivity extends AppCompatActivity {
                         permissionTools.requestAccessibilityPermission();
                     } else {
 
-                        if (mainFunction.isDyHelperOpen){
+                        if (StateDesc.isDyHelperOpen()){
                             Toast.makeText(MainActivity.this, "请先关闭抖音协助功能", Toast.LENGTH_SHORT).show();
                             return;
                         }
 
-                        if (mainFunction.isDyAutoVideo){
+                        if (StateDesc.isDyAutoVedioOpen()){
                             Toast.makeText(MainActivity.this, "请先关闭抖音自动刷视频功能", Toast.LENGTH_SHORT).show();
                             return;
                         }
@@ -58,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
                         String pkgName = pkgEditText.getText().toString();
                         if (!TextUtils.isEmpty(pkgName)){
                             mainFunction.setNewListeningPackage(pkgName.trim());
+                        } else {
+                            mainFunction.setNewListeningPackage(new String[]{DataSource.thisPackage,DataSource.dyPackage});
                         }
 
                     }

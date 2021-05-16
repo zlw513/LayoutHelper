@@ -26,6 +26,11 @@
                 android:alpha="0" />
 
             <KeyAttribute
+                motion:motionTarget="@+id/item4"
+                motion:framePosition="0"
+                android:alpha="0" />
+
+            <KeyAttribute
                 motion:motionTarget="@+id/item1"
                 motion:framePosition="100"
                 android:alpha="1" />
@@ -37,6 +42,12 @@
 
             <KeyAttribute
                 motion:motionTarget="@+id/item3"
+                motion:framePosition="100"
+                android:alpha="1" />
+
+
+            <KeyAttribute
+                motion:motionTarget="@+id/item4"
                 motion:framePosition="100"
                 android:alpha="1" />
 
@@ -72,6 +83,16 @@
             motion:layout_constraintBottom_toBottomOf="parent"
             motion:layout_constraintStart_toStartOf="parent"
             motion:layout_constraintTop_toBottomOf="@id/item2"
+            motion:layout_constraintVertical_bias="0.01"
+            android:translationX="-400dp" />
+        <Constraint
+            android:id="@+id/item4"
+            motion:layout_constraintEnd_toEndOf="parent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            motion:layout_constraintBottom_toBottomOf="parent"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toBottomOf="@id/item3"
             motion:layout_constraintVertical_bias="0.01"
             android:translationX="-400dp" />
     </ConstraintSet>
@@ -110,6 +131,17 @@
             motion:layout_constraintStart_toStartOf="@id/item2"
             motion:layout_constraintHorizontal_bias="0.0"
              />
+        <Constraint
+            android:id="@+id/item4"
+            motion:layout_constraintEnd_toEndOf="parent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            motion:layout_constraintBottom_toBottomOf="parent"
+            motion:layout_constraintVertical_bias="0.01"
+            motion:layout_constraintTop_toBottomOf="@id/item3"
+            motion:layout_constraintStart_toStartOf="@id/item3"
+            motion:layout_constraintHorizontal_bias="0.0"
+            />
     </ConstraintSet>
 
 </MotionScene>

@@ -55,15 +55,12 @@ public class MyAccessbilityService extends AccessibilityService {
 
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
-        Log.d(TAG, "onKeyEvent: " + event.getKeyCode());
-        if (DataSource.dyPackage.equals(mCurrentPackage) && !mainFunction.isDyAutoVideo) {//抖音
+        if (DataSource.dyPackage.equals(mCurrentPackage) && !StateDesc.isDyAutoVedioOpen()) {
             if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
                 mainFunction.swipeDownScreen();
-                Log.d(TAG, "onKeyEvent: VOLUME_DOWN");
                 return true;
             } else if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP) {
                 mainFunction.swipeUpScreen();
-                Log.d(TAG, "onKeyEvent: VOLUME_UP");
                 return true;
             }
         }
