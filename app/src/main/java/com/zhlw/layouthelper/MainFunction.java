@@ -5,20 +5,34 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.accessibilityservice.GestureDescription;
 import android.content.Context;
 import android.graphics.Path;
+import android.graphics.PixelFormat;
+import android.graphics.Rect;
+import android.media.Image;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * author zlw 2021-0421
@@ -27,7 +41,13 @@ import java.util.List;
  */
 public class MainFunction {
     private final String TAG = "zlww";
+
+    private final int BUTTON_DISABLE = 0;
+    private final int BUTTON_ENABLE = 1;
+
     private static final int CHECK_CODE = 100;
+    private static final int VIEW_CODE = 99;
+
     private final int SWIPE_DURATION = 250;
     private static MainFunction mainFunction;
     private LayoutSuspendView suspendWindow;
@@ -40,6 +60,7 @@ public class MainFunction {
     private int windowWidth, windowHeight;
     private boolean isDySeekBarFounded = false;
     private volatile boolean isFinding = false;
+    private AccessibilityNodeInfo mRootNodes;
     private AccessibilityNodeInfo.RangeInfo dySeekBarRangeInfo;
     private CheckHandler checkHandler;
 
@@ -59,6 +80,11 @@ public class MainFunction {
         return mainFunction;
     }
 
+    /**
+     * 依赖注入
+     *
+     * @param accessbilityService
+     */
     public void bindAccessibilityService(MyAccessbilityService accessbilityService) {
         if (mAccessbilityService == null) mAccessbilityService = accessbilityService;
         initWindowWidthAndHeight();
@@ -69,18 +95,40 @@ public class MainFunction {
     }
 
     /**
-     * 依赖注入
+     * 内部调用的
      *
-     * @param window
+     * @param window 要展示的弹窗
      */
-    public void showSuspendWindow(LayoutSuspendView window) {
-        if (suspendWindow == null) suspendWindow = window;
+    private void showSuspendWindow(LayoutSuspendView window) {
         isWindowShowing = true;
         int width = window.getContentView().getWidth();
         int height = window.getContentView().getHeight();
         window.showSuspend(width, height, false);
     }
 
+    public void showLayoutInfoWindow() {
+        if (suspendWindow == null && mAccessbilityService != null) {
+            Log.d(TAG, "showLayoutInfoWindow: ");
+            suspendWindow = new LayoutSuspendView(mAccessbilityService, LayoutSuspendView.STYLE_WIDGETINFO);
+            suspendWindow.setOnSuspendDismissListener(new BaseView.OnSuspendDismissListener() {
+                @Override
+                public void onDismiss() {
+                    setWindowShowing(false);
+                }
+            });
+            showSuspendWindow(suspendWindow);
+        } else {
+            if (!isWindowShowing) {
+                showSuspendWindow();
+            } else {
+                ToastUtils.showToastShort("屏幕信息助手", "功能已开启，请勿重复点击");
+            }
+        }
+    }
+
+    /**
+     * 当实例存在时调用的
+     */
     public void showSuspendWindow() {
         if (suspendWindow != null) {
             isWindowShowing = true;
@@ -99,17 +147,19 @@ public class MainFunction {
     }
 
     public boolean isWindowShowing() {
-        return isWindowShowing;
+        return suspendWindow != null && isWindowShowing;
     }
 
     /**
      * 处理点击和聚焦事件信息
      * 此方法涉及suspend window的更新
+     *
      * @param info 节点信息
      */
     public void functionHandleFocusAndClick(AccessibilityEvent event, AccessibilityNodeInfo info) {
         if (info == null) return;
         if (info.getViewIdResourceName() == null) return;
+        Log.d(TAG, "functionHandleFocusAndClick: id is  "+info.getViewIdResourceName());
         String curId = info.getViewIdResourceName().substring(info.getViewIdResourceName().indexOf("/"));
         if (suspendWindow != null && isWindowShowing() && suspendWindow.isRvMainShowing()) {
             if (mId.equals(curId)) {
@@ -134,22 +184,22 @@ public class MainFunction {
                 nodeInfoList.add(activityName);
                 addNodeInfoList(info);
 
-                suspendWindow.setDataListOrUpdate(getNodeInfoList());
+                if (suspendWindow != null) suspendWindow.setDataListOrUpdate(getNodeInfoList());
             }
         }
     }
 
-    private static class CheckHandler extends Handler{
+    private static class CheckHandler extends Handler {
         public boolean isSwipeOk = false;
 
-        public CheckHandler(Looper looper){
+        public CheckHandler(Looper looper) {
             super(looper);
         }
 
         @Override
         public void handleMessage(@NonNull Message msg) {
             super.handleMessage(msg);
-            if (msg.what == CHECK_CODE){
+            if (msg.what == CHECK_CODE) {
                 isSwipeOk = true;
             }
         }
@@ -157,22 +207,24 @@ public class MainFunction {
 
     /**
      * 目前用于处理抖音的视频进度条
+     *
      * @param info
      */
-    public void functionHandleSelected(AccessibilityNodeInfo info){
+    public void functionHandleSelected(AccessibilityNodeInfo info) {
         if (info == null) return;
+        Log.d(TAG, "functionHandleSelected:   id  is " + info.getViewIdResourceName());
         if (StateDesc.isDyAutoVedioOpen()) updateRangeInfo(info.getViewIdResourceName(), info);
     }
 
-    private void updateRangeInfo(String id ,AccessibilityNodeInfo info){
-        if (id.contains(DataSource.dySeekBarId) && info.getClassName().toString().contains("SeekBar")){
+    private void updateRangeInfo(String id, AccessibilityNodeInfo info) {
+        if (id.contains(DataSource.dySeekBarId) && info.getClassName().toString().contains("SeekBar")) {
             //更新RangeInfo
             dySeekBarRangeInfo = info.getRangeInfo();
-            Log.d(TAG, "updateRangeInfo curValue is "+dySeekBarRangeInfo.getCurrent()+" max value is  "+dySeekBarRangeInfo.getMax());
-            if (dySeekBarRangeInfo.getMax() - dySeekBarRangeInfo.getCurrent() < 50){
+            Log.d(TAG, "updateRangeInfo curValue is " + dySeekBarRangeInfo.getCurrent() + " max value is  " + dySeekBarRangeInfo.getMax());
+            if (dySeekBarRangeInfo.getMax() - dySeekBarRangeInfo.getCurrent() < (SWIPE_DURATION / 2f)) {
                 if (checkHandler == null) checkHandler = new CheckHandler(Looper.getMainLooper());
                 checkHandler.sendEmptyMessageDelayed(CHECK_CODE, SWIPE_DURATION);
-            } else if (checkHandler != null && checkHandler.isSwipeOk){
+            } else if (checkHandler != null && checkHandler.isSwipeOk) {
                 swipeDownScreen();
                 checkHandler.isSwipeOk = false;
             }
@@ -182,15 +234,16 @@ public class MainFunction {
     /**
      * 处理 window状态或者内容发生改变的情况
      * 用于处理抖音自动刷视频的功能
+     *
      * @param state
      */
-    public void functionHandleWindowContentAndStateChange(AccessibilityEvent event,int state){
+    public void functionHandleWindowContentAndStateChange(AccessibilityEvent event, int state) {
         if (!StateDesc.isDyAutoVedioOpen()) return;
-        if (!isDySeekBarFounded && !isFinding){
+        if (!isDySeekBarFounded && !isFinding) {
             AccessibilityNodeInfo info = getInfoByState(state, event);
             findDySeekBarView(info);
         } else {
-            if (dySeekBarRangeInfo != null){
+            if (dySeekBarRangeInfo != null) {
                 if (state == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
                 if (event.getSource() == null) return;
                 List<AccessibilityNodeInfo> detailInfoList = event.getSource().findAccessibilityNodeInfosByViewId(DataSource.dySeekBarFullId);
@@ -198,19 +251,19 @@ public class MainFunction {
                 if (detailInfoList.size() == 1) {
                     info = detailInfoList.get(0);
                 } else {
-                   info = null;
+                    info = null;
                 }
                 if (info == null) return;
-                updateRangeInfo(info.getViewIdResourceName(),info);
+                updateRangeInfo(info.getViewIdResourceName(), info);
             }
         }
     }
 
-    private AccessibilityNodeInfo getInfoByState(int state,AccessibilityEvent event){
+    private AccessibilityNodeInfo getInfoByState(int state, AccessibilityEvent event) {
         AccessibilityNodeInfo info;
-        if (state == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED){
+        if (state == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             info = mAccessbilityService.getRootInActiveWindow();
-        } else if (state == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED){
+        } else if (state == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             info = event.getSource();
         } else {
             info = null;
@@ -220,17 +273,18 @@ public class MainFunction {
 
     /**
      * 查找抖音的 seekbar 控件
-     *  注：有些视频没有进度条........
+     * 注：有些视频没有进度条........
+     *
      * @param info
      */
-    private synchronized void findDySeekBarView(AccessibilityNodeInfo info){
+    private synchronized void findDySeekBarView(AccessibilityNodeInfo info) {
         if (info == null) return;
         List<AccessibilityNodeInfo> detailInfoList = info.findAccessibilityNodeInfosByViewId(DataSource.dySeekBarFullId);
-        if (!detailInfoList.isEmpty()){
+        if (!detailInfoList.isEmpty()) {
             isFinding = true;
-            for (AccessibilityNodeInfo node : detailInfoList){
+            for (AccessibilityNodeInfo node : detailInfoList) {
                 String id = node.getViewIdResourceName().substring(node.getViewIdResourceName().indexOf("/"));
-                if (id.equals(DataSource.dySeekBarId) && node.getClassName().toString().contains("SeekBar")){
+                if (id.equals(DataSource.dySeekBarId) && node.getClassName().toString().contains("SeekBar")) {
                     //找到了
                     isDySeekBarFounded = true;
                     dySeekBarRangeInfo = node.getRangeInfo();
@@ -294,9 +348,16 @@ public class MainFunction {
         mAccessbilityService.setServiceInfo(serviceInfo);
     }
 
-    public void updateActivityName(CharSequence activityName) {
-        if (!activityName.toString().contains("LinearLayout")) {
+    public void updateActivityName(CharSequence activityName,AccessibilityNodeInfo info) {
+        Log.d(TAG, "updateActivityName: activity name " + activityName);
+        if (!activityName.toString().contains("android.widget")) {//过滤安卓原生的控件，防止被抢根节点, 但也有可能影响到需要找的控件，这种情况就要改这里
+            mRootNodes = info;
             this.activityName = activityName;
+        }
+        if (StateDesc.isScreenHelperOpen() && suspendWindow != null && info != null){
+            String pkgName = info.getPackageName().toString();
+            if (DataSource.thisPackage.equals(pkgName)) return;
+            suspendWindow.setCurrentPackageName(mAccessbilityService.getResources().getString(R.string.cur_pkgname).concat(pkgName));
         }
     }
 
@@ -374,14 +435,12 @@ public class MainFunction {
 
     public void swipeUpNormal(AccessibilityNodeInfo info) {
         if (info != null) {
-            Log.d(TAG, "swipeUpNormal: ");
             info.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
         }
     }
 
     public void swipeDownNormal(AccessibilityNodeInfo info) {
         if (info != null) {
-            Log.d(TAG, "swipeDownNormal: ");
             info.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD);
         }
     }
@@ -395,35 +454,43 @@ public class MainFunction {
         windowHeight = metrics.heightPixels;
     }
 
-    public void setDyHelperOpenState(){
-        if (StateDesc.isDyAutoVedioOpen()){
-            Toast.makeText(mAccessbilityService.getContext(), "请先关闭抖音自动刷视频功能", Toast.LENGTH_SHORT).show();
+    public void setDyHelperOpenState() {
+        if (StateDesc.isDyAutoVedioOpen()) {
+            Toast.makeText(mAccessbilityService, "请先关闭抖音自动刷视频功能", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (!StateDesc.isDyHelperOpen()){
+        if (StateDesc.isScreenHelperOpen()) {
+            Toast.makeText(mAccessbilityService, "请先关闭屏幕控件助手功能", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!StateDesc.isDyHelperOpen()) {
             StateDesc.CUR_STATE = StateDesc.STATE_DYHELPEROPEN;
             setNewListeningPackage(DataSource.dyPackage);
             closeSuspendWindow();
-            Toast.makeText(mAccessbilityService.getContext(), "抖音协助已开启", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mAccessbilityService, "抖音协助已开启", Toast.LENGTH_SHORT).show();
         } else {
             StateDesc.CUR_STATE = StateDesc.STATE_DEFAULT;
             setNewListeningPackage(DataSource.thisPackage);
             updateCurPkgNameManual(DataSource.thisPackage);
-            Toast.makeText(mAccessbilityService.getContext(), "抖音协助已关闭", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mAccessbilityService, "抖音协助已关闭", Toast.LENGTH_SHORT).show();
         }
     }
 
-    public void setDyHelperAutoVideoState(){
-        if (StateDesc.isDyHelperOpen()){
-            Toast.makeText(mAccessbilityService.getContext(), "请先关闭抖音协助功能", Toast.LENGTH_SHORT).show();
+    public void setDyHelperAutoVideoState() {
+        if (StateDesc.isDyHelperOpen()) {
+            Toast.makeText(mAccessbilityService, "请先关闭抖音协助功能", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (!StateDesc.isDyAutoVedioOpen()){
+        if (StateDesc.isScreenHelperOpen()) {
+            Toast.makeText(mAccessbilityService, "请先关闭屏幕控件助手功能", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!StateDesc.isDyAutoVedioOpen()) {
             StateDesc.CUR_STATE = StateDesc.STATE_DYAUTOVEDIO;
             setNewListeningPackage(DataSource.dyPackage);
             closeSuspendWindow();
             openContentChanged();
-            Toast.makeText(mAccessbilityService.getContext(), "抖音自动刷视频已开启", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mAccessbilityService, "抖音自动刷视频已开启", Toast.LENGTH_SHORT).show();
         } else {
             StateDesc.CUR_STATE = StateDesc.STATE_DEFAULT;
             isFinding = false;
@@ -432,19 +499,201 @@ public class MainFunction {
             closeContentChanged();
             setNewListeningPackage(DataSource.thisPackage);
             updateCurPkgNameManual(DataSource.thisPackage);
-            Toast.makeText(mAccessbilityService.getContext(), "抖音自动刷视频已关闭", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mAccessbilityService, "抖音自动刷视频已关闭", Toast.LENGTH_SHORT).show();
         }
     }
 
-    public void setScreenHelperOpen(){
-        if (!StateDesc.isScreenHelperOpen()){
+    public void setScreenHelperOpen() {
+        if (!StateDesc.isScreenHelperOpen()) {
             StateDesc.CUR_STATE = StateDesc.STATE_SCREENHELP;
-            Toast.makeText(mAccessbilityService.getContext(), "屏幕控件助手已开启，其他已自动关闭", Toast.LENGTH_SHORT).show();
+            initScreenHelperWindow();
+            windowManager.addView(layoutWindow, getScreenHelperDefaultParms());
+            showScreenHelperWindow();
+            Toast.makeText(mAccessbilityService, "屏幕控件助手已开启，其他已自动关闭", Toast.LENGTH_SHORT).show();
         } else {
             StateDesc.CUR_STATE = StateDesc.STATE_DEFAULT;
-            Toast.makeText(mAccessbilityService.getContext(), "屏幕控件助手已关闭", Toast.LENGTH_SHORT).show();
+            windowManager.removeView(layoutWindow);
+            closeScreenHelperWindow();
+            Toast.makeText(mAccessbilityService, "屏幕控件助手已关闭", Toast.LENGTH_SHORT).show();
         }
     }
 
+    private WindowManager.LayoutParams getScreenHelperDefaultParms() {
+        WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
+        final DisplayMetrics metrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getRealMetrics(metrics);
+        layoutParams.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
+        layoutParams.format = PixelFormat.TRANSPARENT;
+        layoutParams.gravity = Gravity.START | Gravity.TOP;
+        layoutParams.width = metrics.widthPixels;
+        layoutParams.height = metrics.heightPixels;
+        layoutParams.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+        layoutParams.alpha = 1f;
+        return layoutParams;
+    }
+
+    /**
+     * 为了不与layoutinfo的悬浮窗功能相冲突
+     */
+    public void closeScreenHelperWindow() {
+        closeSuspendWindow();
+        suspendWindow = null;
+        isWindowShowing = false;
+        descWindow = null;
+        layoutWindow = null;
+        windowManager = null;
+        counter = null;
+    }
+
+    public void shutDownThreadPool() {
+        mainExecutor.shutdown();
+        mainExecutor = null;
+    }
+
+    public void showScreenHelperWindow() {
+        if (isWindowShowing) {
+            closeSuspendWindow();
+        }
+        suspendWindow = new LayoutSuspendView(mAccessbilityService, LayoutSuspendView.STYLE_SCREENHELPER);
+        suspendWindow.setOnSuspendDismissListener(new BaseView.OnSuspendDismissListener() {
+            @Override
+            public void onDismiss() {
+                setWindowShowing(false);
+            }
+        });
+
+        suspendWindow.setMainFunctionHandleClick(new LayoutSuspendView.MainFunctionHandleClick() {
+            @Override
+            public void onClick(View v) {
+                if (v.getId() == R.id.btn_reset) {
+                    suspendWindow.resetTextInfo();
+                    layoutWindow.removeAllViews();
+                } else {
+                    if (mRootNodes == null) return;
+
+                    String id1 = suspendWindow.getEtWidget1Text();
+                    String id2 = suspendWindow.getEtWidget2Text();
+                    if (TextUtils.isEmpty(id1) && TextUtils.isEmpty(id2)) return;
+
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(mRootNodes.getPackageName()).append(":id/%s");
+                    suspendWindow.operateButtonFunction(BUTTON_DISABLE);
+
+                    layoutWindow.removeAllViews();
+                    Log.d(TAG, "onClick:  mroot node is " + mRootNodes);
+
+                    if (!TextUtils.isEmpty(id1)) {
+                        mainExecutor.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                findWidgetById(mRootNodes, String.format(sb.toString(), id1));
+                            }
+                        });
+                    }
+                    if (!TextUtils.isEmpty(id2)) {
+                        mainExecutor.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                findWidgetById(mRootNodes, String.format(sb.toString(), id2));
+                            }
+                        });
+                    }
+                }
+            }
+        });
+        showSuspendWindow(suspendWindow);
+    }
+
+    private void initScreenHelperWindow() {
+        if (mInflater == null) mInflater = LayoutInflater.from(mAccessbilityService);
+        if (descWindow == null) descWindow = mInflater.inflate(R.layout.frame_window, null);
+        if (layoutWindow == null) layoutWindow = descWindow.findViewById(R.id.window_frame);
+        if (windowManager == null)
+            windowManager = (WindowManager) mAccessbilityService.getSystemService(Context.WINDOW_SERVICE);
+        if (counter == null) counter = new AtomicInteger();
+        if (mainExecutor == null) mainExecutor = Executors.newFixedThreadPool(2);
+    }
+
+    private ExecutorService mainExecutor;
+    private AtomicInteger counter;
+    private LayoutInflater mInflater;
+    private View descWindow;
+    private FrameLayout layoutWindow;
+    private WindowManager windowManager;
+
+    public void findWidgetById(AccessibilityNodeInfo rootInfo, String id) {
+        counter.incrementAndGet();
+        List<AccessibilityNodeInfo> findInfos = rootInfo.findAccessibilityNodeInfosByViewId(id);
+        final int defOffset = 4;
+        for (int i = 0; i < findInfos.size(); i++) {
+            AccessibilityNodeInfo info = findInfos.get(i);
+            if (info.getViewIdResourceName().equals(id)) {
+                //找到了
+                final Rect outRect = new Rect();
+                info.getBoundsInScreen(outRect);
+                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(outRect.width() + defOffset, outRect.height() + defOffset);
+                params.leftMargin = outRect.left - defOffset;
+                params.topMargin = outRect.top - defOffset;
+                final DecsriptionView decsView = new DecsriptionView(mAccessbilityService);
+//                decsView.setBackgroundResource(R.drawable.green_stroke);
+
+                layoutWindow.post(() -> {
+                    {
+                        layoutWindow.addView(decsView, params);
+                    }
+                });
+                break;
+            }
+        }
+
+        int count = counter.decrementAndGet();
+
+        if (count == 0) {
+            suspendWindow.getContentView().post(() -> {
+                suspendWindow.operateButtonFunction(BUTTON_ENABLE);
+            });
+        }
+
+    }
+
+    /**
+     * 手动关闭我们的服务
+     */
+    public void closeAccessibilityService() {
+        mAccessbilityService.disableSelf();
+    }
+
+    /**
+     * 结束服务时调用
+     */
+    public void closeCurrentFunction() {
+        switch (StateDesc.CUR_STATE) {
+            case StateDesc.STATE_DEFAULT:
+                closeSuspendWindow();
+                suspendWindow = null;
+                isWindowShowing = false;
+                break;
+            case StateDesc.STATE_DYAUTOVEDIO:
+                setDyHelperAutoVideoState();
+                break;
+            case StateDesc.STATE_DYHELPEROPEN:
+                setDyHelperOpenState();
+                break;
+            case StateDesc.STATE_SCREENHELP:
+                setScreenHelperOpen();
+                break;
+        }
+    }
+
+    /**
+     * 屏幕旋转时调用
+     */
+    public void onAccessibilityWindowChanged(){
+        if (StateDesc.CUR_STATE == StateDesc.STATE_SCREENHELP){
+            setScreenHelperOpen();
+        } else if (StateDesc.CUR_STATE == StateDesc.STATE_DEFAULT){
+            // no need to do
+        }
+    }
 
 }

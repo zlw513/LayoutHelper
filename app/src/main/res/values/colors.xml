@@ -16,9 +16,12 @@
     <color name="hear_black">#392f41</color>
     <color name="trans_black">#CC312520</color>
     <color name="cool_red">#EF4141</color>
+    <color name="cool_red_light">#FF4040</color>
 
     <color name="transparent">#00000000</color>
+    <color name="trans_light_black">#60000000</color>
 
     <color name="crky">#B2EDCC</color>
-    
+    <color name="green">#00AE4C</color>
+
 </resources>

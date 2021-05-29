@@ -114,7 +114,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/item2"
+        app:layout_constraintTop_toBottomOf="@id/item3"
         app:layout_constraintVertical_bias="0.03">
 
         <TextView
@@ -122,12 +122,44 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="开发中"
+            android:text="屏幕控件助手"
             android:textColor="@color/white"
             android:textSize="16sp" />
 
         <ImageButton
             android:id="@+id/btn_screen_tools"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:background="@color/transparent"
+            android:src="@drawable/ic_goto" />
+
+    </com.zhlw.layouthelper.MyItemView>
+
+    <com.zhlw.layouthelper.MyItemView
+        android:id="@+id/item5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginStart="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/item4"
+        app:layout_constraintVertical_bias="0.03">
+
+        <TextView
+            android:id="@+id/text_screen_alltools"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="屏幕全局控件助手"
+            android:textColor="@color/white"
+            android:textSize="16sp" />
+
+        <ImageButton
+            android:id="@+id/btn_screen_alltools"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"

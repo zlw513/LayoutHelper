@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">布局助手</string>
+    <string name="app_name">老张的布局助手</string>
     <string name="app_accessibility_description">ZLW布局助手</string>
     <string name="auto_update">更新?</string>
     <string name="no_this_attr">此控件无此属性</string>
+    <string name="cur_pkgname">当前监听的包名是:</string>
 </resources>

@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Path;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -17,7 +18,6 @@ public class MyAccessbilityService extends AccessibilityService {
     private final String TAG = "zlww";
     private static boolean isServiceCreated = false;
     private Context mContext;
-    private LayoutSuspendView layoutWindow;
     private MainFunction mainFunction;
     private String mCurrentPackage;
 
@@ -36,20 +36,10 @@ public class MyAccessbilityService extends AccessibilityService {
     protected void onServiceConnected() {
         //每次启动service都会调用
         isServiceCreated = true;
-        if (layoutWindow == null) {
-            layoutWindow = new LayoutSuspendView(mContext);
-            layoutWindow.setOnSuspendDismissListener(new BaseView.OnSuspendDismissListener() {
-                @Override
-                public void onDismiss() {
-                    mainFunction.setWindowShowing(false);
-                }
-            });
-        }
         if (mainFunction == null) {
             mainFunction = MainFunction.getInstance();
             mainFunction.bindAccessibilityService(this);
         }
-        mainFunction.showSuspendWindow(layoutWindow);
         super.onServiceConnected();
     }
 
@@ -91,7 +81,8 @@ public class MyAccessbilityService extends AccessibilityService {
         switch (event.getEventType()) {
             case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
                 mCurrentPackage = event.getPackageName() == null ? "" : event.getPackageName().toString();
-                mainFunction.updateActivityName(event.getClassName());
+                mainFunction.updateActivityName(event.getClassName(),event.getSource());
+                Log.d(TAG, "updateActivityName:  node info 2222  "+event.getSource());
                 mainFunction.functionHandleWindowContentAndStateChange(event, AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
                 break;
             case AccessibilityEvent.TYPE_VIEW_FOCUSED:
@@ -114,15 +105,26 @@ public class MyAccessbilityService extends AccessibilityService {
     }
 
     @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        mainFunction.onAccessibilityWindowChanged();
+    }
+
+    @Override
     public void onDestroy() {
         isServiceCreated = false;
+        mainFunction.shutDownThreadPool();
         mainFunction.unbindAccessibilityService();
-        Toast.makeText(mContext, "zlww 后台服务已关闭", Toast.LENGTH_SHORT).show();
+        Toast.makeText(mContext, "后台服务已关闭", Toast.LENGTH_SHORT).show();
         super.onDestroy();
     }
 
     public static boolean isServiceRunning() {
-        return isServiceCreated;
+        return !isServiceCreated;
+    }
+
+    public String getCurrentPackage() {
+        return mCurrentPackage;
     }
 
     public void setCurrentPackage(String mCurrentPackage) {

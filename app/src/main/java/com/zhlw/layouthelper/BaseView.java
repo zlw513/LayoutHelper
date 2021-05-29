@@ -10,6 +10,11 @@ import android.view.View;
 import android.view.WindowManager;
 
 public abstract class BaseView {
+
+    protected static final int STYLE_WIDGETINFO = 1;
+    protected static final int STYLE_SCREENHELPER = 2;
+    protected final int curStyle;
+
     private Context baseViewContext;
     private View contentView;
     private boolean isShowing = false;
@@ -22,6 +27,16 @@ public abstract class BaseView {
 
     public BaseView(Context context){
         this.baseViewContext = context;
+        curStyle = STYLE_WIDGETINFO;
+        contentView = LayoutInflater.from(context).inflate(getLayoutId(),null);
+        init();
+        initView();
+        onCreateSuspendView();
+    }
+
+    public BaseView(Context context,int curStyle){
+        this.baseViewContext = context;
+        this.curStyle = curStyle;
         contentView = LayoutInflater.from(context).inflate(getLayoutId(),null);
         init();
         initView();
@@ -70,7 +85,6 @@ public abstract class BaseView {
         if (isShowing){
             windowManager.removeView(contentView);
         }
-        Log.d("zlww", "showSuspend: ");
         windowManager.addView(contentView,wmParams);//本质就是通过window manager往屏幕上add view
         isShowing = true;
     }
@@ -137,9 +151,8 @@ public abstract class BaseView {
             wmParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         }
         wmParams.format = PixelFormat.RGBA_8888;
-        wmParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR |
-                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
+        wmParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                | WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
         wmParams.gravity = Gravity.START | Gravity.TOP;//默认显示位置在左上角
         wmParams.y = 100;
         return wmParams;

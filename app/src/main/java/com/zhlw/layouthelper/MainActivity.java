@@ -2,6 +2,7 @@ package com.zhlw.layouthelper;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -10,11 +11,11 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
     private final String TAG = "zlww";
     private EditText pkgEditText;
-    private ImageButton toSettingsBtn, toTikTokBtn ,toDyAutoVideo;
+    private ImageButton toSettingsBtn, toTikTokBtn ,toDyAutoVideo,toScreenHelper,toAllScreenHelper;
     private PermissionImpl permissionTools;
     private MainFunction mainFunction;
 
@@ -30,64 +31,14 @@ public class MainActivity extends AppCompatActivity {
         toSettingsBtn = findViewById(R.id.btn_gotosettings);
         toTikTokBtn = findViewById(R.id.btn_gotoby);
         toDyAutoVideo = findViewById(R.id.btn_auto_dyvideo);
+        toScreenHelper = findViewById(R.id.btn_screen_tools);
+        toAllScreenHelper = findViewById(R.id.btn_screen_alltools);
 
-        toSettingsBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!PermissionHelper.checkForPermissions(MainActivity.this,PermissionHelper.PermissionCode.OVERLAY_PERMISSIONS)){
-                    permissionTools.requestOverlayPermission();
-                } else {
-                    if (!MyAccessbilityService.isServiceRunning()) {
-                        permissionTools.requestAccessibilityPermission();
-                    } else {
-
-                        if (StateDesc.isDyHelperOpen()){
-                            Toast.makeText(MainActivity.this, "请先关闭抖音协助功能", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-
-                        if (StateDesc.isDyAutoVedioOpen()){
-                            Toast.makeText(MainActivity.this, "请先关闭抖音自动刷视频功能", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-
-                        if (!mainFunction.isWindowShowing()){
-                            mainFunction.showSuspendWindow();
-                        }
-
-                        String pkgName = pkgEditText.getText().toString();
-                        if (!TextUtils.isEmpty(pkgName)){
-                            mainFunction.setNewListeningPackage(pkgName.trim());
-                        } else {
-                            mainFunction.setNewListeningPackage(new String[]{DataSource.thisPackage,DataSource.dyPackage});
-                        }
-
-                    }
-                }
-            }
-        });
-
-        toTikTokBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!MyAccessbilityService.isServiceRunning()) {
-                    permissionTools.requestAccessibilityPermission();
-                } else {
-                    mainFunction.setDyHelperOpenState();
-                }
-            }
-        });
-
-        toDyAutoVideo.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!MyAccessbilityService.isServiceRunning()) {
-                    permissionTools.requestAccessibilityPermission();
-                } else {
-                    mainFunction.setDyHelperAutoVideoState();
-                }
-            }
-        });
+        toSettingsBtn.setOnClickListener(this);
+        toTikTokBtn.setOnClickListener(this);
+        toDyAutoVideo.setOnClickListener(this);
+        toScreenHelper.setOnClickListener(this);
+        toAllScreenHelper.setOnClickListener(this);
 
         permissionTools.setCommonPermissionsResult(new PermissionImpl.CommonPermissionsResult() {
             @Override
@@ -118,6 +69,69 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 //        finish();
+    }
+
+    @SuppressLint("NonConstantResourceId")
+    @Override
+    public void onClick(View v) {
+        if (MyAccessbilityService.isServiceRunning() && v.getId() != R.id.btn_screen_alltools) {
+            permissionTools.requestAccessibilityPermission();
+            return;
+        }
+        switch (v.getId()){
+            case R.id.btn_gotosettings:
+                if (!PermissionHelper.checkForPermissions(MainActivity.this,PermissionHelper.PermissionCode.OVERLAY_PERMISSIONS)){
+                    permissionTools.requestOverlayPermission();
+                } else {
+
+                        if (StateDesc.isDyHelperOpen()){
+                            Toast.makeText(MainActivity.this, "请先关闭抖音协助功能", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        if (StateDesc.isDyAutoVedioOpen()){
+                            Toast.makeText(MainActivity.this, "请先关闭抖音自动刷视频功能", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        if (StateDesc.isScreenHelperOpen()){
+                            Toast.makeText(MainActivity.this, "请先关闭屏幕控件助手功能", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        mainFunction.showLayoutInfoWindow();
+
+                        String pkgName = pkgEditText.getText().toString();
+                        if (!TextUtils.isEmpty(pkgName)){
+                            mainFunction.setNewListeningPackage(pkgName.trim());
+                        } else {
+                            mainFunction.setNewListeningPackage(new String[]{DataSource.thisPackage,DataSource.dyPackage});
+                        }
+
+                }
+                break;
+            case R.id.btn_gotoby:
+                mainFunction.setDyHelperOpenState();
+                break;
+            case R.id.btn_auto_dyvideo:
+                mainFunction.setDyHelperAutoVideoState();
+                break;
+            case R.id.btn_screen_tools:
+                if (!mainFunction.isWindowShowing() && StateDesc.isScreenHelperOpen()){
+                    mainFunction.showSuspendWindow();
+                } else {
+                    mainFunction.setScreenHelperOpen();
+                }
+                break;
+            case R.id.btn_screen_alltools:
+                if (!MyAccessbilityService.isServiceRunning()){
+                    Toast.makeText(this, "当前服务已关闭", Toast.LENGTH_SHORT).show();
+                    mainFunction.closeCurrentFunction();
+                    mainFunction.closeAccessibilityService();//将当前服务先关闭吧,好开启另外一个
+                }
+                //TODO 打开新服务
+                break;
+        }
     }
 
 }
