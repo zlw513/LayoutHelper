@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -17,10 +18,10 @@ public class DecsriptionView extends View {
     private Paint descTextPaint;
     private Paint borderPaint;
     private int centerX,centerY;
-    private final String tempWidth = "width %s px : %s dp";
-    private final String tempHeight = "height %s px : %s dp";
-    private final String tempWidAndHei = "width is %spx height is %spx";
-    private int minWidth = 60;// dp
+    private final String tempWidth = "width %spx : %sdp";
+    private final String tempHeight = "height %spx : %sdp";
+    private final String tempWidAndHei = "width %spx height %spx";
+    private int minWidth = 80;// dp
     private int minHeight = 20;// dp
 
     public DecsriptionView(Context context) {
@@ -51,7 +52,7 @@ public class DecsriptionView extends View {
         borderPaint = new Paint();
         borderPaint.setAntiAlias(true);
         borderPaint.setStyle(Paint.Style.STROKE);
-        borderPaint.setStrokeWidth(3);
+        borderPaint.setStrokeWidth(4);
         borderPaint.setColor(Color.RED);
 
     }
@@ -70,25 +71,33 @@ public class DecsriptionView extends View {
     }
 
     private void autoFitDrawInfo(int width,int height,Canvas canvas){
-        if (width < dp2px(getContext(),minWidth) && height < dp2px(getContext(), minHeight)){//写不了字了
-            //both too small
-            canvas.drawColor(getResources().getColor(R.color.trans_light_black, null));
-            canvas.drawRect(0,0, getWidth(), getHeight(), borderPaint);
-        } else if (width < dp2px(getContext(), minHeight) && height > dp2px(getContext(), minWidth)) {//高度大于 minwidth 才好写字
+        if (width <= dp2px(getContext(), minWidth) && height >= dp2px(getContext(), minWidth)) {//高度大于 minwidth 才好写字
             // height is fine but width too small
+            Path path = new Path();
+            path.moveTo(centerX/1.5f, 0);
+            path.lineTo(centerX/1.5f, height);
             canvas.drawColor(getResources().getColor(R.color.trans_light_black, null));
             canvas.drawRect(0,0, getWidth(), getHeight(), borderPaint);
-            canvas.save();
-            canvas.rotate(90, centerX, centerY);
-            canvas.drawText(String.format(tempWidth, getWidth(),px2dp(getContext(), getWidth())), centerX, centerY, descTextPaint);
-            canvas.drawText(String.format(tempHeight, getHeight(),px2dp(getContext(), getHeight())), centerX+descTextPaint.getTextSize(), centerY, descTextPaint);
-            canvas.restore();
-        } else if (width > dp2px(getContext(), (int) (minWidth*1.5f)) && height < dp2px(getContext(), minHeight)){
+            canvas.drawTextOnPath(String.format(tempWidAndHei, getWidth(),getHeight()), path,0 ,0, descTextPaint);
+        } else if (width >= dp2px(getContext(), minWidth) && height <= dp2px(getContext(), minHeight)){
             // width is fine but height too small
             canvas.drawColor(getResources().getColor(R.color.trans_light_black, null));
             canvas.drawRect(0,0, getWidth(), getHeight(), borderPaint);
-            canvas.drawText(String.format(tempWidAndHei, getWidth(),getHeight()), centerX, centerY, descTextPaint);
-        } else {
+            canvas.drawText(String.format(tempWidAndHei, getWidth(),getHeight()), centerX, getHeight()-2, descTextPaint);
+        } else if (width <= dp2px(getContext(), minWidth) || height <= dp2px(getContext(), minHeight)) {//高度却不大于 minwidth ,这种不好写字才好写字
+            //bad
+            canvas.drawColor(getResources().getColor(R.color.trans_light_black, null));
+            canvas.drawRect(0,0, getWidth(), getHeight(), borderPaint);
+
+            //这里画最简短的信息吧
+            if (width >= dp2px(getContext(), minWidth/2) && height >= dp2px(getContext(), minHeight)){//高度太低也画不了了
+                String widStr = "w: %spx";
+                String heighStr = "h: %spx";
+                canvas.drawText(String.format(widStr, getWidth()), centerX, centerY, descTextPaint);
+                canvas.drawText(String.format(heighStr, getHeight()), centerX, centerY+descTextPaint.getTextSize(), descTextPaint);
+            }
+
+        }else {
             // is ok
             canvas.drawColor(getResources().getColor(R.color.trans_light_black, null));
             canvas.drawRect(0,0, getWidth(), getHeight(), borderPaint);
