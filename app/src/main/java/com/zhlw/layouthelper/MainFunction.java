@@ -505,6 +505,7 @@ public class MainFunction {
 
     public void setScreenHelperOpen() {
         if (!StateDesc.isScreenHelperOpen()) {
+            closeCurrentFunction();
             StateDesc.CUR_STATE = StateDesc.STATE_SCREENHELP;
             initScreenHelperWindow();
             windowManager.addView(layoutWindow, getScreenHelperDefaultParms());
