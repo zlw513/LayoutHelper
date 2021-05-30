@@ -11,7 +11,7 @@
 
 下面是1.功能的效果图：
 
-![功能1图片](https://github.com/zlw513/LayoutHelper/blob/master/screenshot/example1.jpg)
+![功能1图片](https://github.com/zlw513/LayoutHelper/blob/master/screenshot/example4.jpg)
 
 下面是4.功能的效果图:
 
@@ -19,7 +19,7 @@
 
 ![功能4图片2](https://github.com/zlw513/LayoutHelper/blob/master/screenshot/example3.jpg)
 
-![功能4图片3](https://github.com/zlw513/LayoutHelper/blob/master/screenshot/example4.jpg)
+![功能4图片3](https://github.com/zlw513/LayoutHelper/blob/master/screenshot/example1.jpg)
 
 其中功能4的显示效果会根据目标控件大小来做调节，也有可能不显示信息（控件太小）,此功能适合开发者使用
 
