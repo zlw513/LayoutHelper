@@ -7,7 +7,6 @@ import android.content.Context;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
-import android.media.Image;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -21,17 +20,15 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.constraintlayout.widget.ConstraintLayout;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -49,13 +46,13 @@ public class MainFunction {
     private static final int VIEW_CODE = 99;
 
     private final int SWIPE_DURATION = 250;
-    private static MainFunction mainFunction;
     private LayoutSuspendView suspendWindow;
     private MyAccessbilityService mAccessbilityService;
 
     private String mId = "";
     private List<CharSequence> nodeInfoList;
     private boolean isWindowShowing = false;
+    private boolean isEasyWindowShowing = false;
     private CharSequence activityName;
     private int windowWidth, windowHeight;
     private boolean isDySeekBarFounded = false;
@@ -68,16 +65,12 @@ public class MainFunction {
         nodeInfoList = new ArrayList<>();
     }
 
+    private static class SingleHolder{
+        private static final MainFunction mafunc = new MainFunction();
+    }
+
     public static MainFunction getInstance() {
-        if (mainFunction == null) {
-            synchronized (MainFunction.class) {
-                if (mainFunction == null) {
-                    mainFunction = new MainFunction();
-                }
-                return mainFunction;
-            }
-        }
-        return mainFunction;
+        return SingleHolder.mafunc;
     }
 
     /**
@@ -99,8 +92,8 @@ public class MainFunction {
      *
      * @param window 要展示的弹窗
      */
-    private void showSuspendWindow(LayoutSuspendView window) {
-        isWindowShowing = true;
+    private void showSuspendWindow(BaseView window) {
+        if (window instanceof LayoutSuspendView) isWindowShowing = true;
         int width = window.getContentView().getWidth();
         int height = window.getContentView().getHeight();
         window.showSuspend(width, height, false);
@@ -238,23 +231,24 @@ public class MainFunction {
      * @param state
      */
     public void functionHandleWindowContentAndStateChange(AccessibilityEvent event, int state) {
-        if (!StateDesc.isDyAutoVedioOpen()) return;
-        if (!isDySeekBarFounded && !isFinding) {
-            AccessibilityNodeInfo info = getInfoByState(state, event);
-            findDySeekBarView(info);
-        } else {
-            if (dySeekBarRangeInfo != null) {
-                if (state == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
-                if (event.getSource() == null) return;
-                List<AccessibilityNodeInfo> detailInfoList = event.getSource().findAccessibilityNodeInfosByViewId(DataSource.dySeekBarFullId);
-                AccessibilityNodeInfo info;
-                if (detailInfoList.size() == 1) {
-                    info = detailInfoList.get(0);
-                } else {
-                    info = null;
+        if (StateDesc.isDyAutoVedioOpen()){
+            if (!isDySeekBarFounded && !isFinding) {
+                AccessibilityNodeInfo info = getInfoByState(state, event);
+                findDySeekBarView(info);
+            } else {
+                if (dySeekBarRangeInfo != null) {
+                    if (state == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+                    if (event.getSource() == null) return;
+                    List<AccessibilityNodeInfo> detailInfoList = event.getSource().findAccessibilityNodeInfosByViewId(DataSource.dySeekBarFullId);
+                    AccessibilityNodeInfo info;
+                    if (detailInfoList.size() == 1) {
+                        info = detailInfoList.get(0);
+                    } else {
+                        info = null;
+                    }
+                    if (info == null) return;
+                    updateRangeInfo(info.getViewIdResourceName(), info);
                 }
-                if (info == null) return;
-                updateRangeInfo(info.getViewIdResourceName(), info);
             }
         }
     }
@@ -349,7 +343,7 @@ public class MainFunction {
     }
 
     public void updateActivityName(CharSequence activityName,AccessibilityNodeInfo info) {
-        Log.d(TAG, "updateActivityName: activity name " + activityName);
+        Log.d(TAG+33, "updateActivityName: activity name " + activityName);
         if (!activityName.toString().contains("android.widget")) {//过滤安卓原生的控件，防止被抢根节点, 但也有可能影响到需要找的控件，这种情况就要改这里
             mRootNodes = info;
             this.activityName = activityName;
@@ -507,7 +501,7 @@ public class MainFunction {
         if (!StateDesc.isScreenHelperOpen()) {
             closeCurrentFunction();
             StateDesc.CUR_STATE = StateDesc.STATE_SCREENHELP;
-            initScreenHelperWindow();
+            initScreenHelperWindow(true);
             windowManager.addView(layoutWindow, getScreenHelperDefaultParms());
             showScreenHelperWindow();
             Toast.makeText(mAccessbilityService, "屏幕控件助手已开启，其他已自动关闭", Toast.LENGTH_SHORT).show();
@@ -605,14 +599,15 @@ public class MainFunction {
         showSuspendWindow(suspendWindow);
     }
 
-    private void initScreenHelperWindow() {
+    private void initScreenHelperWindow(boolean useThread) {
         if (mInflater == null) mInflater = LayoutInflater.from(mAccessbilityService);
         if (descWindow == null) descWindow = mInflater.inflate(R.layout.frame_window, null);
         if (layoutWindow == null) layoutWindow = descWindow.findViewById(R.id.window_frame);
-        if (windowManager == null)
-            windowManager = (WindowManager) mAccessbilityService.getSystemService(Context.WINDOW_SERVICE);
-        if (counter == null) counter = new AtomicInteger();
-        if (mainExecutor == null) mainExecutor = Executors.newFixedThreadPool(2);
+        if (windowManager == null) windowManager = (WindowManager) mAccessbilityService.getSystemService(Context.WINDOW_SERVICE);
+        if (useThread){
+            if (counter == null) counter = new AtomicInteger();
+            if (mainExecutor == null) mainExecutor = Executors.newFixedThreadPool(2);
+        }
     }
 
     private ExecutorService mainExecutor;
@@ -643,7 +638,6 @@ public class MainFunction {
                         layoutWindow.addView(decsView, params);
                     }
                 });
-                break;
             }
         }
 
@@ -655,6 +649,45 @@ public class MainFunction {
             });
         }
 
+    }
+
+    /**
+     * 查找屏幕中所有控件的信息
+     * @param rootInfo 根节点
+     * @param ignoreViewGroup 过滤viewgroup吗?
+     */
+    private void findWidgetInRoots(List<AccessibilityNodeInfo> rootInfo,boolean ignoreViewGroup){
+        if (rootInfo == null) return;
+        final int childCount = rootInfo.size();
+        final int defOffset = 4;
+        layoutWindow.removeAllViews();
+        for (int childid=0;childid<childCount;childid++){
+            AccessibilityNodeInfo info = rootInfo.get(childid);
+            if (ignoreViewGroup){
+                if (info.getClassName().toString().contains("ViewGroup") || info.getClassName().toString().contains("Layout")) continue;
+                else {
+                    if(info.getPackageName() != null && info.getPackageName().toString().contains(mRootNodes.getPackageName())){
+                        final Rect outRect = new Rect();
+                        info.getBoundsInScreen(outRect);
+                        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(outRect.width() + defOffset, outRect.height() + defOffset);
+                        params.leftMargin = outRect.left - defOffset;
+                        params.topMargin = outRect.top - defOffset;
+                        final DecsriptionView decsView = new DecsriptionView(mAccessbilityService);
+                        layoutWindow.addView(decsView, params);
+                    }
+                }
+            } else {
+                if(info.getPackageName() != null && info.getPackageName().toString().contains(mRootNodes.getPackageName())){
+                    final Rect outRect = new Rect();
+                    info.getBoundsInScreen(outRect);
+                    FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(outRect.width() + defOffset, outRect.height() + defOffset);
+                    params.leftMargin = outRect.left - defOffset;
+                    params.topMargin = outRect.top - defOffset;
+                    final DecsriptionView decsView = new DecsriptionView(mAccessbilityService);
+                    layoutWindow.addView(decsView, params);
+                }
+            }
+        }
     }
 
     /**
@@ -686,6 +719,10 @@ public class MainFunction {
         }
     }
 
+    public boolean isEasyWindowShowing() {
+        return isEasyWindowShowing;
+    }
+
     /**
      * 屏幕旋转时调用
      */
@@ -694,6 +731,53 @@ public class MainFunction {
             setScreenHelperOpen();
         } else if (StateDesc.CUR_STATE == StateDesc.STATE_DEFAULT){
             // no need to do
+        }
+    }
+
+
+    public void startScreenFullWidgetFunc(){
+        if (!isEasyWindowShowing){//close
+            isEasyWindowShowing = true;
+            initScreenHelperWindow(false);
+            windowManager.addView(layoutWindow, getScreenHelperDefaultParms());
+            EasyWindow easyWindow = new EasyWindow(mAccessbilityService);
+            easyWindow.setEasyWindowClickListener(v -> {
+                if (mRootNodes == null) return;
+                AccessibilityNodeInfo root = mRootNodes;
+                if (root == null) return;
+                ArrayList<AccessibilityNodeInfo> roots = new ArrayList<>();
+                roots.add(root);
+                ArrayList<AccessibilityNodeInfo> nodeList = new ArrayList<>();
+                findAllNode(roots, nodeList);
+                //开始查找节点
+                findWidgetInRoots(nodeList,true);
+            });
+            easyWindow.setOnSuspendDismissListener(()->{
+                windowManager.removeView(layoutWindow);
+                isEasyWindowShowing = false;
+            });
+            showSuspendWindow(easyWindow);
+        }
+    }
+
+    private void findAllNode(List<AccessibilityNodeInfo> roots, List<AccessibilityNodeInfo> list) {
+        try {
+            ArrayList<AccessibilityNodeInfo> tem = new ArrayList<>();
+            for (AccessibilityNodeInfo e : roots) {
+                if (e == null) continue;
+                Rect rect = new Rect();
+                e.getBoundsInScreen(rect);
+                if (rect.width() <= 0 || rect.height() <= 0) continue;
+                list.add(e);
+                for (int n = 0; n < e.getChildCount(); n++) {
+                    tem.add(e.getChild(n));
+                }
+            }
+            if (!tem.isEmpty()) {
+                findAllNode(tem, list);
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 

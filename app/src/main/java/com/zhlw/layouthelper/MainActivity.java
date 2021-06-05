@@ -74,8 +74,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @SuppressLint("NonConstantResourceId")
     @Override
     public void onClick(View v) {
-        if (MyAccessbilityService.isServiceRunning() && v.getId() != R.id.btn_screen_alltools) {
+        if (MyAccessbilityService.isServiceRunning()) {
             permissionTools.requestAccessibilityPermission();
+            return;
+        }
+        if (mainFunction.isEasyWindowShowing()){
+            Toast.makeText(this, "请先全局屏幕助手功能", Toast.LENGTH_SHORT).show();
             return;
         }
         switch (v.getId()){
@@ -124,12 +128,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 break;
             case R.id.btn_screen_alltools:
-                if (!MyAccessbilityService.isServiceRunning()){
-                    Toast.makeText(this, "当前服务已关闭", Toast.LENGTH_SHORT).show();
-                    mainFunction.closeCurrentFunction();
-                    mainFunction.closeAccessibilityService();//将当前服务先关闭吧,好开启另外一个
-                }
-                //TODO 打开新服务
+                Toast.makeText(this, "其他功能已关闭", Toast.LENGTH_SHORT).show();
+                mainFunction.closeCurrentFunction();
+                mainFunction.startScreenFullWidgetFunc();
                 break;
         }
     }
