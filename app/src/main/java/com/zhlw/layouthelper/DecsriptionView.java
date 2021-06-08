@@ -45,7 +45,7 @@ public class DecsriptionView extends View {
         descTextPaint.setAntiAlias(true);
         descTextPaint.setStyle(Paint.Style.FILL_AND_STROKE);
         descTextPaint.setStrokeWidth(1);
-        descTextPaint.setTextSize(24);
+        descTextPaint.setTextSize(18);
         descTextPaint.setColor(getResources().getColor(R.color.white, null));
         descTextPaint.setTextAlign(Paint.Align.CENTER);
 
@@ -83,6 +83,7 @@ public class DecsriptionView extends View {
             // width is fine but height too small
             canvas.drawColor(getResources().getColor(R.color.trans_light_black, null));
             canvas.drawRect(0,0, getWidth(), getHeight(), borderPaint);
+            descTextPaint.setTextSize(14);
             canvas.drawText(String.format(tempWidAndHei, getWidth(),getHeight()), centerX, getHeight()-2, descTextPaint);
         } else if (width <= dp2px(getContext(), minWidth) || height <= dp2px(getContext(), minHeight)) {//高度却不大于 minwidth ,这种不好写字才好写字
             //bad

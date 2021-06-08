@@ -250,6 +250,8 @@ public class MainFunction {
                     updateRangeInfo(info.getViewIdResourceName(), info);
                 }
             }
+        } else if (isEasyWindowShowing){
+            mRootNodes = event.getSource();
         }
     }
 
@@ -739,6 +741,7 @@ public class MainFunction {
         if (!isEasyWindowShowing){//close
             isEasyWindowShowing = true;
             initScreenHelperWindow(false);
+            openContentChanged();
             windowManager.addView(layoutWindow, getScreenHelperDefaultParms());
             EasyWindow easyWindow = new EasyWindow(mAccessbilityService);
             easyWindow.setEasyWindowClickListener(v -> {
@@ -753,6 +756,8 @@ public class MainFunction {
                 findWidgetInRoots(nodeList,true);
             });
             easyWindow.setOnSuspendDismissListener(()->{
+                closeContentChanged();
+                layoutWindow.removeAllViews();
                 windowManager.removeView(layoutWindow);
                 isEasyWindowShowing = false;
             });
