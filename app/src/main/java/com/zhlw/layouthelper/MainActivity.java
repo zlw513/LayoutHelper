@@ -108,9 +108,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         String pkgName = pkgEditText.getText().toString();
                         if (!TextUtils.isEmpty(pkgName)){
                             mainFunction.setNewListeningPackage(pkgName.trim());
-                        } else {
-                            mainFunction.setNewListeningPackage(new String[]{DataSource.thisPackage,DataSource.dyPackage});
                         }
+
 
                 }
                 break;

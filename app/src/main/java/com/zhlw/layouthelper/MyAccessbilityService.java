@@ -82,7 +82,6 @@ public class MyAccessbilityService extends AccessibilityService {
             case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
                 mCurrentPackage = event.getPackageName() == null ? "" : event.getPackageName().toString();
                 mainFunction.updateActivityName(event.getClassName(),event.getSource());
-                Log.d(TAG, "updateActivityName:  node info 2222  "+event.getSource());
                 mainFunction.functionHandleWindowContentAndStateChange(event, AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
                 break;
             case AccessibilityEvent.TYPE_VIEW_FOCUSED:
