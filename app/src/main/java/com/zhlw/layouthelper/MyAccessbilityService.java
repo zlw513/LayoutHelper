@@ -78,6 +78,7 @@ public class MyAccessbilityService extends AccessibilityService {
     @SuppressLint("SwitchIntDef")
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        Log.d(TAG,"event type "+event.getEventType());
         switch (event.getEventType()) {
             case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
                 mCurrentPackage = event.getPackageName() == null ? "" : event.getPackageName().toString();
@@ -86,6 +87,7 @@ public class MyAccessbilityService extends AccessibilityService {
                 break;
             case AccessibilityEvent.TYPE_VIEW_FOCUSED:
             case AccessibilityEvent.TYPE_VIEW_CLICKED:
+            case AccessibilityEvent.TYPE_VIEW_LONG_CLICKED:
                 mainFunction.functionHandleFocusAndClick(event, event.getSource());
                 break;
             case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:

@@ -15,6 +15,8 @@
         <item>enabled ?</item>
         <item>focused ?</item>
         <item>selected ?</item>
+        <item>width |</item>
+        <item>height |</item>
         <item>window id |</item>
     </string-array>
 

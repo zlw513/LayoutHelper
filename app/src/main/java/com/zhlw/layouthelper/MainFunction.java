@@ -26,6 +26,7 @@ import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -303,8 +304,46 @@ public class MainFunction {
         nodeInfoList.add(info.isEnabled() ? "true" : "false");
         nodeInfoList.add(info.isFocused() ? "true" : "false");
         nodeInfoList.add(info.isSelected() ? "true" : "false");
+
+        String id = info.getViewIdResourceName();
+        if (mRootNodes != null){
+
+            List<AccessibilityNodeInfo> findInfos = mRootNodes.findAccessibilityNodeInfosByViewId(id);
+
+            for (int i = 0; i < findInfos.size(); i++) {
+                AccessibilityNodeInfo node = findInfos.get(i);
+                if (node.getViewIdResourceName().equals(id)) {
+                    //找到了
+                    final Rect outRect = new Rect();
+                    node.getBoundsInScreen(outRect);
+
+                    mapLayoutInfo.put(id, new LayoutInfoBean(outRect.width(),outRect.height()));
+                    break;
+                }
+            }
+        }
+
+        LayoutInfoBean layoutInfo = mapLayoutInfo.get(id);
+        if (layoutInfo != null){
+            nodeInfoList.add(String.valueOf(layoutInfo.width));
+            nodeInfoList.add(String.valueOf(layoutInfo.height));
+        }
+
         nodeInfoList.add(String.valueOf(info.getWindowId()));
     }
+
+    private static class LayoutInfoBean{
+        public int width;
+        public int height;
+
+        public LayoutInfoBean(int width,int height){
+            this.width = width;
+            this.height = height;
+        }
+    }
+
+    private final HashMap<String,LayoutInfoBean> mapLayoutInfo = new HashMap<>();
+
 
     public List<CharSequence> getNodeInfoList() {
         return nodeInfoList;
@@ -346,6 +385,7 @@ public class MainFunction {
 
     public void updateActivityName(CharSequence activityName,AccessibilityNodeInfo info) {
         Log.d(TAG+33, "updateActivityName: activity name " + activityName);
+        if (!mapLayoutInfo.isEmpty()) mapLayoutInfo.clear();
         if (!activityName.toString().contains("android.widget")) {//过滤安卓原生的控件，防止被抢根节点, 但也有可能影响到需要找的控件，这种情况就要改这里
             mRootNodes = info;
             this.activityName = activityName;
@@ -633,7 +673,6 @@ public class MainFunction {
                 params.leftMargin = outRect.left - defOffset;
                 params.topMargin = outRect.top - defOffset;
                 final DecsriptionView decsView = new DecsriptionView(mAccessbilityService);
-//                decsView.setBackgroundResource(R.drawable.green_stroke);
 
                 layoutWindow.post(() -> {
                     {
@@ -767,7 +806,7 @@ public class MainFunction {
 
     private void findAllNode(List<AccessibilityNodeInfo> roots, List<AccessibilityNodeInfo> list) {
         try {
-            ArrayList<AccessibilityNodeInfo> tem = new ArrayList<>();
+            ArrayList<AccessibilityNodeInfo> temp = new ArrayList<>();
             for (AccessibilityNodeInfo e : roots) {
                 if (e == null) continue;
                 Rect rect = new Rect();
@@ -775,15 +814,18 @@ public class MainFunction {
                 if (rect.width() <= 0 || rect.height() <= 0) continue;
                 list.add(e);
                 for (int n = 0; n < e.getChildCount(); n++) {
-                    tem.add(e.getChild(n));
+                    temp.add(e.getChild(n));
                 }
             }
-            if (!tem.isEmpty()) {
-                findAllNode(tem, list);
+            if (!temp.isEmpty()) {
+                findAllNode(temp, list);
             }
         } catch (Throwable e) {
             e.printStackTrace();
         }
     }
+
+
+
 
 }
